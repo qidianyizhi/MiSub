@@ -9,6 +9,7 @@
 
 import { urlToClashProxy } from '../../utils/url-to-clash.js';
 import { getUniqueName } from './name-utils.js';
+import { getTemplate, renderRulesForSurge, getExtraGroups } from './rule-templates.js';
 
 /**
  * 清理字符串中的控制字符（保留换行和制表符）
@@ -365,7 +366,8 @@ export function generateBuiltinSurgeConfig(nodeList, options = {}) {
         managedConfigUrl = '',
         interval = 86400,
         skipCertVerify = false,
-        enableUdp = false
+        enableUdp = false,
+        ruleTemplate = 'standard'
     } = options;
 
     // 清理控制字符后解析节点 URL 列表
@@ -491,27 +493,23 @@ ${finalProxyLines.join('\n')}`);
     // 添加各个有效地区的分组
     for (const groupName of activeRegionGroupNames) {
         const nodesInGroup = activeRegionGroups[groupName].join(', ');
-        // 地区组内默认使用 url-test 自动测速选择，同时作为二级策略
         proxyGroupLines.push(`${groupName} = url-test, ${nodesInGroup}, url=http://www.gstatic.com/generate_204, interval=300, tolerance=50`);
+    }
+
+    // 添加模板额外策略组（full 模板的 YouTube/Netflix 等）
+    const template = getTemplate(ruleTemplate);
+    const extraGroups = getExtraGroups(template);
+    for (const g of extraGroups) {
+        const defaultProxies = g.defaultPolicy === 'DIRECT'
+            ? `DIRECT, 📶 节点选择, ${proxyNamesList}`
+            : `📶 节点选择, ♻️ 自动选择, DIRECT, ${proxyNamesList}`;
+        proxyGroupLines.push(`${g.name} = select, ${defaultProxies}`);
     }
 
     sections.push(`[Proxy Group]\n${proxyGroupLines.join('\n')}`);
 
-    // [Rule]
-    // 引入高级规则集 (Rule-Set)
-    const ruleLines = [
-        '# 苹果服务直连',
-        'RULE-SET,https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Apple/Apple.list,DIRECT',
-        '# 全球媒体走代理',
-        'RULE-SET,https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Surge/GlobalMedia/GlobalMedia.list,📶 节点选择',
-        '# 电报走代理',
-        'RULE-SET,https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Telegram/Telegram.list,📶 节点选择',
-        '# 国内直连',
-        'RULE-SET,https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Surge/China/China.list,DIRECT',
-        '# 兜底分流',
-        'GEOIP,CN,DIRECT',
-        'FINAL,📶 节点选择,dns-failed'
-    ];
+    // [Rule] — 从规则模板生成
+    const ruleLines = renderRulesForSurge(template, 'surge');
     sections.push(`[Rule]\n${ruleLines.join('\n')}`);
 
     // [WireGuard] sections（如果有）

@@ -14,6 +14,9 @@ import { authMiddleware } from '../auth-middleware.js';
 import { generateBuiltinClashConfig } from './builtin-clash-generator.js'; // [Added] 内置 Clash 生成器
 import { generateBuiltinSurgeConfig } from './builtin-surge-generator.js'; // [Added] 内置 Surge 生成器
 import { generateBuiltinLoonConfig } from './builtin-loon-generator.js'; // [Added] 内置 Loon 生成器
+import { generateBuiltinSingboxConfig } from './builtin-singbox-generator.js'; // [Added] 内置 Sing-Box 生成器
+import { generateBuiltinQuanxConfig } from './builtin-quanx-generator.js'; // [Added] 内置 Quantumult X 生成器
+import { generateBuiltinSurfboardConfig } from './builtin-surfboard-generator.js'; // [Added] 内置 Surfboard 生成器
 
 /**
  * 处理MiSub订阅请求
@@ -202,6 +205,10 @@ export async function handleMisubRequest(context) {
     const shouldSkipCertificateVerify = Boolean(config.subConverterScv);
     const shouldSkipCertificateVerifyLoon = config.builtinLoonSkipCertVerify === true;
     const shouldEnableUdp = Boolean(config.subConverterUdp);
+
+    // [Added] 内置转换器全局开关（默认启用，实现零第三方依赖）
+    const useBuiltinConverterSetting = config.useBuiltinConverter !== false;
+    const builtinRuleTemplate = config.builtinRuleTemplate || 'standard';
 
     // 使用统一的确定目标格式的方法（此方法中包含了处理各类客户端如 Surge 等对应版本的最新支持规则）
     let targetFormat = determineTargetFormat(userAgentHeader, url.searchParams);
@@ -401,9 +408,10 @@ export async function handleMisubRequest(context) {
         return new Response(base64Content, { headers });
     }
 
-    // [新增] 内置 Clash 生成器 - 当 builtin=1 或 builtin=clash 时使用
+    // [新增] 内置 Clash 生成器 - 当 builtin=1 或 builtin=clash 或全局内置开关启用时使用
     // 优势：完整保留 dialer-proxy、reality-opts 等特殊参数
-    const useBuiltinClash = url.searchParams.get('builtin') === '1' ||
+    const useBuiltinClash = useBuiltinConverterSetting ||
+        url.searchParams.get('builtin') === '1' ||
         url.searchParams.get('builtin') === 'clash' ||
         url.searchParams.get('native') === '1';
 
@@ -412,7 +420,8 @@ export async function handleMisubRequest(context) {
             const clashConfig = generateBuiltinClashConfig(combinedNodeList, {
                 fileName: subName,
                 enableUdp: shouldEnableUdp,
-                skipCertVerify: shouldSkipCertificateVerify
+                skipCertVerify: shouldSkipCertificateVerify,
+                ruleTemplate: builtinRuleTemplate
             });
 
             const responseHeaders = new Headers({
@@ -464,8 +473,9 @@ export async function handleMisubRequest(context) {
         }
     }
 
-    // [修改] 内置 Surge 生成器 - 仅在显式请求时使用，默认走 subconverter
-    const useBuiltinSurge = url.searchParams.get('builtin') === '1' ||
+    // [修改] 内置 Surge 生成器 - 全局内置开关启用或显式请求时使用
+    const useBuiltinSurge = useBuiltinConverterSetting ||
+        url.searchParams.get('builtin') === '1' ||
         url.searchParams.get('builtin') === 'surge' ||
         url.searchParams.get('native') === '1';
 
@@ -479,7 +489,8 @@ export async function handleMisubRequest(context) {
             fileName: subName,
             managedConfigUrl: managedUrl,
             skipCertVerify: shouldSkipCertificateVerify,
-            enableUdp: shouldEnableUdp
+            enableUdp: shouldEnableUdp,
+            ruleTemplate: builtinRuleTemplate
         });
 
         const responseHeaders = new Headers({
@@ -534,7 +545,8 @@ export async function handleMisubRequest(context) {
         }
     }
 
-    const useBuiltinLoon = url.searchParams.get('builtin') === '1' ||
+    const useBuiltinLoon = useBuiltinConverterSetting ||
+        url.searchParams.get('builtin') === '1' ||
         url.searchParams.get('builtin') === 'loon' ||
         url.searchParams.get('native') === '1';
 
@@ -547,7 +559,8 @@ export async function handleMisubRequest(context) {
             fileName: subName,
             managedConfigUrl: managedUrl,
             interval: config.UpdateInterval || 86400,
-            skipCertVerify: shouldSkipCertificateVerifyLoon
+            skipCertVerify: shouldSkipCertificateVerifyLoon,
+            ruleTemplate: builtinRuleTemplate
         });
 
         const responseHeaders = new Headers({
@@ -593,13 +606,166 @@ export async function handleMisubRequest(context) {
         return new Response(loonConfig, { headers: responseHeaders });
     };
 
-    // [新增] 内置 Loon 生成器 - 仅在显式请求时使用，默认走 subconverter
+    // [新增] 内置 Loon 生成器 - 全局内置开关启用或显式请求时使用
     if (useBuiltinLoon && targetFormat === 'loon') {
         try {
             return buildBuiltinLoonResponse();
         } catch (e) {
             console.error('[BuiltinLoon] Generation failed, falling back to subconverter:', e);
             // 回退到 subconverter
+        }
+    }
+
+    // [新增] 内置 Sing-Box 生成器
+    const useBuiltinSingbox = useBuiltinConverterSetting ||
+        url.searchParams.get('builtin') === '1' ||
+        url.searchParams.get('builtin') === 'singbox' ||
+        url.searchParams.get('native') === '1';
+
+    if (useBuiltinSingbox && targetFormat === 'singbox') {
+        try {
+            const singboxConfig = generateBuiltinSingboxConfig(combinedNodeList, {
+                fileName: subName,
+                enableUdp: shouldEnableUdp,
+                skipCertVerify: shouldSkipCertificateVerify,
+                ruleTemplate: builtinRuleTemplate
+            });
+
+            const responseHeaders = new Headers({
+                "Content-Disposition": `attachment; filename*=utf-8''${encodeURIComponent(subName)}`,
+                'Content-Type': 'application/json; charset=utf-8',
+                'Cache-Control': 'no-store, no-cache',
+                'X-MiSub-Mode': 'builtin-singbox'
+            });
+
+            Object.entries(cacheHeaders).forEach(([key, value]) => {
+                responseHeaders.set(key, value);
+            });
+
+            if (!url.searchParams.has('callback_token') && !shouldSkipLogging) {
+                const clientIp = request.headers.get('CF-Connecting-IP')
+                    || request.headers.get('X-Real-IP')
+                    || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
+                    || 'N/A';
+                context.waitUntil(
+                    sendEnhancedTgNotification(config, '🛰️ *订阅被访问*', clientIp,
+                        `*域名:* \`${domain}\`\n*客户端:* \`${userAgentHeader}\`\n*请求格式:* \`singbox (builtin)\`\n*订阅组:* \`${subName}\``)
+                );
+                if (config.enableAccessLog) {
+                    logAccessSuccess({
+                        context, env, request, userAgentHeader,
+                        targetFormat: 'singbox (builtin)',
+                        token, profileIdentifier, subName, domain
+                    });
+                }
+            }
+
+            return new Response(singboxConfig, { headers: responseHeaders });
+        } catch (e) {
+            console.error('[BuiltinSingbox] Generation failed, falling back to subconverter:', e);
+        }
+    }
+
+    // [新增] 内置 Quantumult X 生成器
+    const useBuiltinQuanx = useBuiltinConverterSetting ||
+        url.searchParams.get('builtin') === '1' ||
+        url.searchParams.get('builtin') === 'quanx' ||
+        url.searchParams.get('native') === '1';
+
+    if (useBuiltinQuanx && targetFormat === 'quanx') {
+        try {
+            const quanxConfig = generateBuiltinQuanxConfig(combinedNodeList, {
+                fileName: subName,
+                skipCertVerify: shouldSkipCertificateVerify,
+                ruleTemplate: builtinRuleTemplate
+            });
+
+            const responseHeaders = new Headers({
+                "Content-Disposition": `attachment; filename*=utf-8''${encodeURIComponent(subName)}`,
+                'Content-Type': 'text/plain; charset=utf-8',
+                'Cache-Control': 'no-store, no-cache',
+                'X-MiSub-Mode': 'builtin-quanx'
+            });
+
+            Object.entries(cacheHeaders).forEach(([key, value]) => {
+                responseHeaders.set(key, value);
+            });
+
+            if (!url.searchParams.has('callback_token') && !shouldSkipLogging) {
+                const clientIp = request.headers.get('CF-Connecting-IP')
+                    || request.headers.get('X-Real-IP')
+                    || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
+                    || 'N/A';
+                context.waitUntil(
+                    sendEnhancedTgNotification(config, '🛰️ *订阅被访问*', clientIp,
+                        `*域名:* \`${domain}\`\n*客户端:* \`${userAgentHeader}\`\n*请求格式:* \`quanx (builtin)\`\n*订阅组:* \`${subName}\``)
+                );
+                if (config.enableAccessLog) {
+                    logAccessSuccess({
+                        context, env, request, userAgentHeader,
+                        targetFormat: 'quanx (builtin)',
+                        token, profileIdentifier, subName, domain
+                    });
+                }
+            }
+
+            return new Response(quanxConfig, { headers: responseHeaders });
+        } catch (e) {
+            console.error('[BuiltinQuanX] Generation failed, falling back to subconverter:', e);
+        }
+    }
+
+    // [新增] 内置 Surfboard 生成器
+    const useBuiltinSurfboard = useBuiltinConverterSetting ||
+        url.searchParams.get('builtin') === '1' ||
+        url.searchParams.get('builtin') === 'surfboard' ||
+        url.searchParams.get('native') === '1';
+
+    if (useBuiltinSurfboard && targetFormat === 'surfboard') {
+        try {
+            const publicBaseUrl = getPublicBaseUrl(env, url);
+            const callbackPath = profileIdentifier ? `/${token}/${profileIdentifier}` : `/${token}`;
+            const managedUrl = `${publicBaseUrl.origin}${callbackPath}?surfboard`;
+
+            const surfboardConfig = generateBuiltinSurfboardConfig(combinedNodeList, {
+                fileName: subName,
+                managedConfigUrl: managedUrl,
+                skipCertVerify: shouldSkipCertificateVerify,
+                ruleTemplate: builtinRuleTemplate
+            });
+
+            const responseHeaders = new Headers({
+                "Content-Disposition": `attachment; filename*=utf-8''${encodeURIComponent(subName)}`,
+                'Content-Type': 'text/plain; charset=utf-8',
+                'Cache-Control': 'no-store, no-cache',
+                'X-MiSub-Mode': 'builtin-surfboard'
+            });
+
+            Object.entries(cacheHeaders).forEach(([key, value]) => {
+                responseHeaders.set(key, value);
+            });
+
+            if (!url.searchParams.has('callback_token') && !shouldSkipLogging) {
+                const clientIp = request.headers.get('CF-Connecting-IP')
+                    || request.headers.get('X-Real-IP')
+                    || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
+                    || 'N/A';
+                context.waitUntil(
+                    sendEnhancedTgNotification(config, '🛰️ *订阅被访问* (内置Surfboard转换)', clientIp,
+                        `*域名:* \`${domain}\`\n*客户端:* \`${userAgentHeader}\`\n*请求格式:* \`surfboard (builtin)\`\n*订阅组:* \`${subName}\``)
+                );
+                if (config.enableAccessLog) {
+                    logAccessSuccess({
+                        context, env, request, userAgentHeader,
+                        targetFormat: 'surfboard (builtin)',
+                        token, profileIdentifier, subName, domain
+                    });
+                }
+            }
+
+            return new Response(surfboardConfig, { headers: responseHeaders });
+        } catch (e) {
+            console.error('[BuiltinSurfboard] Generation failed, falling back to subconverter:', e);
         }
     }
 
@@ -669,6 +835,45 @@ export async function handleMisubRequest(context) {
                 return buildBuiltinLoonResponse();
             } catch (fallbackError) {
                 console.error('[BuiltinLoon] Fallback generation failed:', fallbackError);
+            }
+        }
+        // Sing-Box 内置兜底
+        if (targetFormat === 'singbox' && !useBuiltinSingbox) {
+            try {
+                const singboxConfig = generateBuiltinSingboxConfig(combinedNodeList, {
+                    fileName: subName, enableUdp: shouldEnableUdp, skipCertVerify: shouldSkipCertificateVerify, ruleTemplate: builtinRuleTemplate
+                });
+                return new Response(singboxConfig, {
+                    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store, no-cache', 'X-MiSub-Mode': 'builtin-singbox-fallback' }
+                });
+            } catch (fallbackError) {
+                console.error('[BuiltinSingbox] Fallback generation failed:', fallbackError);
+            }
+        }
+        // Quantumult X 内置兜底
+        if (targetFormat === 'quanx' && !useBuiltinQuanx) {
+            try {
+                const quanxConfig = generateBuiltinQuanxConfig(combinedNodeList, {
+                    fileName: subName, skipCertVerify: shouldSkipCertificateVerify, ruleTemplate: builtinRuleTemplate
+                });
+                return new Response(quanxConfig, {
+                    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store, no-cache', 'X-MiSub-Mode': 'builtin-quanx-fallback' }
+                });
+            } catch (fallbackError) {
+                console.error('[BuiltinQuanX] Fallback generation failed:', fallbackError);
+            }
+        }
+        // Surfboard 内置兜底
+        if (targetFormat === 'surfboard' && !useBuiltinSurfboard) {
+            try {
+                const surfboardConfig = generateBuiltinSurfboardConfig(combinedNodeList, {
+                    fileName: subName, skipCertVerify: shouldSkipCertificateVerify, ruleTemplate: builtinRuleTemplate
+                });
+                return new Response(surfboardConfig, {
+                    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store, no-cache', 'X-MiSub-Mode': 'builtin-surfboard-fallback' }
+                });
+            } catch (fallbackError) {
+                console.error('[BuiltinSurfboard] Fallback generation failed:', fallbackError);
             }
         }
     }
@@ -762,7 +967,7 @@ rules:
             });
         }
 
-        if (targetFormat.startsWith('surge') || targetFormat === 'loon') {
+        if (targetFormat.startsWith('surge') || targetFormat === 'loon' || targetFormat === 'surfboard') {
             const fallbackIni = `
 [Proxy]
 ❌ 生成失败 = trojan, 127.0.0.1, 443, password=error, skip-cert-verify=true

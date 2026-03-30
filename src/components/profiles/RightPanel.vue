@@ -16,7 +16,7 @@ const uiStore = useUIStore();
 const copied = ref(false);
 let copyTimeout = null;
 
-const formats = ['通用格式', 'Base64', 'Clash', 'Sing-Box', 'Surge', 'Loon'];
+const formats = ['通用格式', 'Base64', 'Clash', 'Sing-Box', 'Surge', 'Surfboard', 'Loon'];
 const selectedFormat = ref('通用格式');
 const selectedId = ref('default'); 
 
@@ -45,9 +45,9 @@ const subLink = computed(() => {
     return baseUrl;
   }
   
-  const targetMapping = { 'Sing-Box': 'base64', 'QuanX': 'quanx' };
+  const targetMapping = { 'Sing-Box': 'singbox', 'QuanX': 'quanx' };
   const formatKey = (targetMapping[selectedFormat.value] || selectedFormat.value.toLowerCase());
-  return `${baseUrl}?${formatKey}`;
+  return `${baseUrl}?${formatKey}&builtin=1`;
 });
 
 const copyToClipboard = () => {

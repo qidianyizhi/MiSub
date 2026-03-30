@@ -12,6 +12,8 @@ export const DEFAULT_SETTINGS = {
     subConverterScv: false,
     subConverterUdp: false,
     builtinLoonSkipCertVerify: false,
+    useBuiltinConverter: true,
+    builtinRuleTemplate: 'standard',
     NotifyThresholdDays: 3,
     NotifyThresholdPercent: 90,
     enableTrafficNode: false,

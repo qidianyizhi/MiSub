@@ -7,6 +7,7 @@
 import { urlsToClashProxies } from '../../utils/url-to-clash.js';
 import { getUniqueName } from './name-utils.js';
 import { clashFix } from '../../utils/format-utils.js';
+import { getTemplate, renderRulesForClash, getExtraGroups } from './rule-templates.js';
 import yaml from 'js-yaml';
 
 /**
@@ -69,7 +70,8 @@ export function generateBuiltinClashConfig(nodeList, options = {}) {
     const {
         fileName = 'MiSub',
         enableUdp = true,
-        skipCertVerify = false
+        skipCertVerify = false,
+        ruleTemplate = 'standard'
     } = options;
 
     // 解析节点 URL 列表（先清理控制字符）
@@ -132,33 +134,51 @@ export function generateBuiltinClashConfig(nodeList, options = {}) {
 
         'proxies': proxies,
 
-        'proxy-groups': [
-            {
-                'name': '🚀 节点选择',
-                'type': 'select',
-                'proxies': [...proxyNames, '♻️ 自动选择', '🔯 故障转移']
-            },
-            {
-                'name': '♻️ 自动选择',
-                'type': 'url-test',
-                'url': 'http://www.gstatic.com/generate_204',
-                'interval': 300,
-                'tolerance': 50,
-                'proxies': proxyNames
-            },
-            {
-                'name': '🔯 故障转移',
-                'type': 'fallback',
-                'url': 'http://www.gstatic.com/generate_204',
-                'interval': 300,
-                'proxies': proxyNames
+        'proxy-groups': (() => {
+            const template = getTemplate(ruleTemplate);
+            const extraGroups = getExtraGroups(template);
+            const groups = [
+                {
+                    'name': '🚀 节点选择',
+                    'type': 'select',
+                    'proxies': [...proxyNames, '♻️ 自动选择', '🔯 故障转移']
+                },
+                {
+                    'name': '♻️ 自动选择',
+                    'type': 'url-test',
+                    'url': 'http://www.gstatic.com/generate_204',
+                    'interval': 300,
+                    'tolerance': 50,
+                    'proxies': proxyNames
+                },
+                {
+                    'name': '🔯 故障转移',
+                    'type': 'fallback',
+                    'url': 'http://www.gstatic.com/generate_204',
+                    'interval': 300,
+                    'proxies': proxyNames
+                }
+            ];
+            for (const g of extraGroups) {
+                const defaultProxies = g.defaultPolicy === 'DIRECT'
+                    ? ['DIRECT', '🚀 节点选择', ...proxyNames]
+                    : ['🚀 节点选择', '♻️ 自动选择', 'DIRECT', ...proxyNames];
+                groups.push({ 'name': g.name, 'type': 'select', 'proxies': defaultProxies });
             }
-        ],
+            return groups;
+        })(),
 
-        'rules': [
-            'GEOIP,CN,DIRECT',
-            'MATCH,🚀 节点选择'
-        ]
+        ...(() => {
+            const template = getTemplate(ruleTemplate);
+            const { rules, ruleProviders } = renderRulesForClash(template);
+            // 将 📶 节点选择 映射为 Clash 的 🚀 节点选择
+            const mappedRules = rules.map(r => r.replace(/📶 节点选择/g, '🚀 节点选择'));
+            const result = { 'rules': mappedRules };
+            if (Object.keys(ruleProviders).length > 0) {
+                result['rule-providers'] = ruleProviders;
+            }
+            return result;
+        })()
     };
 
     // 生成 YAML

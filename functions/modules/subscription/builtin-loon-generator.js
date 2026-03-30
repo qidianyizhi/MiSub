@@ -12,6 +12,7 @@
 
 import { urlToClashProxy } from '../../utils/url-to-clash.js';
 import { getUniqueName } from './name-utils.js';
+import { getTemplate, renderRulesForSurge, getExtraGroups } from './rule-templates.js';
 
 /**
  * 清理控制字符
@@ -233,7 +234,8 @@ export function generateBuiltinLoonConfig(nodeList, options = {}) {
         fileName = 'MiSub',
         managedConfigUrl = '',
         interval = 86400,
-        skipCertVerify = null
+        skipCertVerify = null,
+        ruleTemplate = 'standard'
     } = options;
 
     const cleanedNodeList = cleanControlChars(nodeList);
@@ -338,27 +340,36 @@ resource-parser = https://raw.githubusercontent.com/sub-store-org/Sub-Store/mast
         proxyGroupLines.push(`${groupName} = url-test, ${nodesInGroup}, url=http://www.gstatic.com/generate_204, interval=300, tolerance=50${icon}`);
     }
 
+    // 添加模板额外策略组（full 模板的 YouTube/Netflix 等）
+    const template = getTemplate(ruleTemplate);
+    const extraGroups = getExtraGroups(template);
+    for (const g of extraGroups) {
+        const defaultProxies = g.defaultPolicy === 'DIRECT'
+            ? `DIRECT, 📶 节点选择, ${proxyNamesStr}`
+            : `📶 节点选择, ♻️ 自动选择, DIRECT, ${proxyNamesStr}`;
+        proxyGroupLines.push(`${g.name} = select, ${defaultProxies}, icon=${iconRepo}/Proxy.png`);
+    }
+
     sections.push(`[Proxy Group]\n${proxyGroupLines.join('\n')}`);
 
-    // [Rule]
-    sections.push(`[Rule]
-# Apple
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Loon/Apple/Apple.list,DIRECT
-# Global Media
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Loon/GlobalMedia/GlobalMedia_No_Resolve.list,📶 节点选择
-# Telegram
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Loon/Telegram/Telegram.list,📶 节点选择
-# China
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Loon/China/China.list,DIRECT
-# Local Area Network
-IP-CIDR,192.168.0.0/16,DIRECT
-IP-CIDR,10.0.0.0/8,DIRECT
-IP-CIDR,172.16.0.0/12,DIRECT
-IP-CIDR,127.0.0.0/8,DIRECT
-# GeoIP
-GEOIP,CN,DIRECT
-# Final
-FINAL,📶 节点选择`);
+    // [Rule] — 从规则模板生成
+    const ruleLines = renderRulesForSurge(template, 'loon');
+    // Loon 需要额外的局域网直连规则
+    const loonExtraRules = [
+        '# Local Area Network',
+        'IP-CIDR,192.168.0.0/16,DIRECT',
+        'IP-CIDR,10.0.0.0/8,DIRECT',
+        'IP-CIDR,172.16.0.0/12,DIRECT',
+        'IP-CIDR,127.0.0.0/8,DIRECT'
+    ];
+    // 在 GEOIP 之前插入局域网规则
+    const geoipIdx = ruleLines.findIndex(l => l.startsWith('GEOIP,'));
+    if (geoipIdx >= 0) {
+        ruleLines.splice(geoipIdx, 0, ...loonExtraRules);
+    } else {
+        ruleLines.push(...loonExtraRules);
+    }
+    sections.push(`[Rule]\n${ruleLines.join('\n')}`);
 
     return sections.join('\n\n') + '\n';
 }

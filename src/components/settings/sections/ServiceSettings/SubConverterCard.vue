@@ -61,6 +61,39 @@ async function testSubconverter() {
       </svg>
       外部服务集成
     </h3>
+
+    <!-- 内置转换器开关 -->
+    <div class="flex items-center justify-between p-4 misub-radius-lg" :class="settings.useBuiltinConverter ? 'bg-green-50/80 dark:bg-green-900/20 border border-green-200/70 dark:border-green-800/30' : 'bg-yellow-50/80 dark:bg-yellow-900/20 border border-yellow-200/70 dark:border-yellow-800/30'">
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-200">内置转换器（隐私模式）</p>
+        <p v-if="settings.useBuiltinConverter" class="text-xs text-green-600 dark:text-green-400 mt-0.5">
+          已开启 — 所有订阅格式（Clash / Surge / Loon / Sing-Box / QX / Surfboard / Base64）均在本地转换，节点信息不会发送给任何第三方
+        </p>
+        <p v-else class="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5">
+          已关闭 — 将使用下方配置的外部 SubConverter 后端进行格式转换，您的节点信息（服务器地址、密码、UUID 等）会明文发送给该后端
+        </p>
+      </div>
+      <Switch v-model="settings.useBuiltinConverter" />
+    </div>
+
+    <!-- 规则模板选择器（仅内置转换器开启时显示） -->
+    <div v-if="settings.useBuiltinConverter" class="p-4 bg-white/70 dark:bg-gray-900/50 border border-gray-200/70 dark:border-white/10 misub-radius-lg">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-900 dark:text-gray-200">分流规则模板</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            规则集从公开仓库加载（仅域名/IP 分类数据），不涉及任何隐私信息
+          </p>
+        </div>
+        <select v-model="settings.builtinRuleTemplate"
+          class="px-3 py-1.5 bg-white/80 dark:bg-gray-800/70 border border-gray-200/80 dark:border-white/10 misub-radius-lg text-sm text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary-500/40">
+          <option value="basic">基础 — 仅 GEOIP 分流</option>
+          <option value="standard">标准 — Apple / 媒体 / Telegram / 国内（推荐）</option>
+          <option value="full">完整 — YouTube / Netflix / Telegram / 微软 / 游戏等细分</option>
+        </select>
+      </div>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SubConverter 后端地址</label>
