@@ -3,6 +3,10 @@ import { computed } from 'vue';
 import SubConverterSelector from '../../forms/SubConverterSelector.vue';
 import NodeTransformSettings from '../../settings/NodeTransformSettings.vue';
 import Input from '../../ui/Input.vue';
+import { useSettingsStore } from '@/stores/settings';
+
+const settingsStore = useSettingsStore();
+const isBuiltinMode = computed(() => settingsStore.config.useBuiltinConverter !== false);
 
 const props = defineProps({
 localProfile: {
@@ -119,31 +123,48 @@ const nodeTransformMode = computed({
     
     <div v-show="showAdvanced" class="mt-4 space-y-4 animate-fade-in-down">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label for="profile-subconverter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            自定义后端 (可选)
+        <!-- 自定义后端/远程配置：仅外部模式显示 -->
+        <template v-if="!isBuiltinMode">
+          <div>
+            <label for="profile-subconverter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              自定义后端 (可选)
+            </label>
+            <SubConverterSelector
+              id="profile-subconverter"
+              v-model="localProfile.subConverter"
+              type="backend"
+              placeholder="留空则使用全局设置"
+              :allowEmpty="true"
+            />
+            <p class="text-xs text-gray-400 mt-1">为此订阅组指定一个独立的 SubConverter 后端地址。</p>
+          </div>
+          <div>
+            <label for="profile-subconfig" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              自定义远程配置 (可选)
+            </label>
+            <SubConverterSelector
+              id="profile-subconfig"
+              v-model="localProfile.subConfig"
+              type="config"
+              placeholder="留空则使用全局设置"
+              :allowEmpty="true"
+            />
+            <p class="text-xs text-gray-400 mt-1">为此订阅组指定一个独立的 Subconverter 配置文件。</p>
+          </div>
+        </template>
+        <!-- 规则模板：仅内置模式显示 -->
+        <div v-if="isBuiltinMode">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            规则模板 (可选)
           </label>
-          <SubConverterSelector
-            id="profile-subconverter"
-            v-model="localProfile.subConverter"
-            type="backend"
-            placeholder="留空则使用全局设置"
-            :allowEmpty="true"
-          />
-          <p class="text-xs text-gray-400 mt-1">为此订阅组指定一个独立的 SubConverter 后端地址。</p>
-        </div>
-        <div>
-          <label for="profile-subconfig" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            自定义远程配置 (可选)
-          </label>
-          <SubConverterSelector
-            id="profile-subconfig"
-            v-model="localProfile.subConfig"
-            type="config"
-            placeholder="留空则使用全局设置"
-            :allowEmpty="true"
-          />
-          <p class="text-xs text-gray-400 mt-1">为此订阅组指定一个独立的 Subconverter 配置文件。</p>
+          <select v-model="localProfile.ruleTemplate"
+            class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 misub-radius-md shadow-xs focus:outline-hidden focus:ring-indigo-500 focus:border-indigo-500 dark:text-white">
+            <option value="">使用全局设置</option>
+            <option value="basic">基础 — 仅 GEOIP 分流</option>
+            <option value="standard">标准 — Apple / 媒体 / Telegram / 国内</option>
+            <option value="full">完整 — YouTube / Netflix / 微软 / 游戏等细分</option>
+          </select>
+          <p class="text-xs text-gray-400 mt-1">为此订阅组指定独立的分流规则模板，留空则使用全局设置。</p>
         </div>
         <div>
           <label for="profile-expires-at" class="block text-sm font-medium text-gray-700 dark:text-gray-300">

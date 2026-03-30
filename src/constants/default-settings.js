@@ -119,6 +119,7 @@ export const DEFAULT_PROFILE_FORM = {
     customId: '',
     subConverter: '',
     subConfig: '',
+    ruleTemplate: '',
     subscriptions: [],
     manualNodes: [],
     enabled: true,

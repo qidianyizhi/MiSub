@@ -85,6 +85,7 @@ export async function handleMisubRequest(context) {
     let effectiveSubConfig;
     let isProfileExpired = false; // Moved declaration here
     let shouldUseEmoji = false;   // 是否在 subconverter 请求中启用 emoji
+    let resolvedProfile = null;    // 当前请求对应的 profile（用于读取 profile 级别设置）
 
     const DEFAULT_EXPIRED_NODE = `trojan://00000000-0000-0000-0000-000000000000@127.0.0.1:443#${encodeURIComponent('您的订阅已失效')}`;
 
@@ -94,6 +95,7 @@ export async function handleMisubRequest(context) {
             return new Response('Invalid Profile Token', { status: 403 });
         }
         const profile = allProfiles.find(p => (p.customId && p.customId === profileIdentifier) || p.id === profileIdentifier);
+        resolvedProfile = profile || null;
         if (profile && profile.enabled) {
             // Check if the profile has an expiration date and if it's expired
             if (profile.expiresAt) {
@@ -208,7 +210,9 @@ export async function handleMisubRequest(context) {
 
     // [Added] 内置转换器全局开关（默认启用，实现零第三方依赖）
     const useBuiltinConverterSetting = config.useBuiltinConverter !== false;
-    const builtinRuleTemplate = config.builtinRuleTemplate || 'standard';
+    const builtinRuleTemplate = (resolvedProfile && resolvedProfile.ruleTemplate && resolvedProfile.ruleTemplate.trim() !== '')
+        ? resolvedProfile.ruleTemplate
+        : (config.builtinRuleTemplate || 'standard');
 
     // 使用统一的确定目标格式的方法（此方法中包含了处理各类客户端如 Surge 等对应版本的最新支持规则）
     let targetFormat = determineTargetFormat(userAgentHeader, url.searchParams);
