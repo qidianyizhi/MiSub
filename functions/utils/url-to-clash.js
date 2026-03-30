@@ -159,11 +159,11 @@ function parseVlessUrl(url) {
             proxy.tls = true;
         }
 
-// SNI (支持 sni 和 peer 两种参数名，Shadowrocket 使用 peer)
+// SNI / servername (mihomo 使用 servername)
       if (params.get('sni')) {
-        proxy.sni = params.get('sni');
+        proxy.servername = params.get('sni');
       } else if (params.get('peer')) {
-        proxy.sni = params.get('peer');
+        proxy.servername = params.get('peer');
       }
 
         // Fingerprint
@@ -180,6 +180,16 @@ function parseVlessUrl(url) {
         if (params.get('alpn')) {
             proxy.alpn = params.get('alpn').split(',');
         }
+
+        // Network (始终输出，mihomo 需要)
+        proxy.network = network;
+
+        // Encryption
+        const encryption = params.get('encryption') || 'none';
+        proxy.encryption = encryption;
+
+        // skip-cert-verify
+        proxy['skip-cert-verify'] = false;
 
         // [重要] dialer-proxy 链式代理
         if (params.get('dp')) {
@@ -253,7 +263,7 @@ function parseTrojanUrl(url) {
             }
         }
 
-        // SNI (支持 sni 和 peer 两种参数名，Shadowrocket 使用 peer)
+        // SNI / servername (mihomo 使用 servername)
         if (params.get('sni')) {
             proxy.sni = params.get('sni');
         } else if (params.get('peer')) {
@@ -269,6 +279,9 @@ function parseTrojanUrl(url) {
         if (params.get('allowInsecure') === '1') {
             proxy['skip-cert-verify'] = true;
         }
+
+        // Network (始终输出)
+        proxy.network = network;
 
         // [重要] dialer-proxy 链式代理
         if (params.get('dp')) {
