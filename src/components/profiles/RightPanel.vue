@@ -16,7 +16,19 @@ const uiStore = useUIStore();
 const copied = ref(false);
 let copyTimeout = null;
 
-const formats = ['通用格式', 'Base64', 'Clash', 'Sing-Box', 'Surge', 'Surfboard', 'Loon'];
+const formats = [
+  { name: '通用格式', icon: 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9' },
+  { name: 'Base64', icon: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4' },
+  { name: 'Clash', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
+  { name: 'Sing-Box', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+  { name: 'NekoBox', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+  { name: 'Surge', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+  { name: 'Shadowrocket', icon: 'M12 19l9 2-9-18-9 18 9-2zm0 0v-8' },
+  { name: 'Surfboard', icon: 'M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z' },
+  { name: 'Loon', icon: 'M12 19l9 2-9-18-9 18 9-2zm0 0v-8' },
+  { name: 'QuanX', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+  { name: 'FlClash', icon: 'M11.983 1.907a.75.75 0 00-.726.56L9.167 10.5H4.5a.75.75 0 00-.56 1.243l8.25 9.348a.75.75 0 001.393-.509l-.009-.038 2.09-8.067H19.5a.75.75 0 00.56-1.243l-8.25-9.348a.75.75 0 00-.827-.179z' },
+];
 const selectedFormat = ref('通用格式');
 const selectedId = ref('default'); 
 
@@ -45,7 +57,7 @@ const subLink = computed(() => {
     return baseUrl;
   }
   
-  const targetMapping = { 'Sing-Box': 'singbox', 'QuanX': 'quanx' };
+  const targetMapping = { 'Sing-Box': 'singbox', 'NekoBox': 'singbox', 'QuanX': 'quanx', 'Shadowrocket': 'base64', 'FlClash': 'clash' };
   const formatKey = (targetMapping[selectedFormat.value] || selectedFormat.value.toLowerCase());
   return `${baseUrl}?${formatKey}&builtin=1`;
 });
@@ -87,18 +99,21 @@ onUnmounted(() => {
         <div class="grid grid-cols-3 gap-2">
             <button
               v-for="(format, index) in formats"
-              :key="format"
-              @click="selectedFormat = format"
-              :aria-pressed="selectedFormat === format"
-              class="px-3 py-2 text-xs font-medium misub-radius-lg border transition-colors flex justify-center items-center list-item-animation"
+              :key="format.name"
+              @click="selectedFormat = format.name"
+              :aria-pressed="selectedFormat === format.name"
+              class="px-3 py-2 text-xs font-medium misub-radius-lg border transition-colors flex justify-center items-center gap-1.5 list-item-animation"
               :style="{ '--delay-index': index }"
               :class="[
-                selectedFormat === format
+                selectedFormat === format.name
                   ? 'bg-primary-600 text-white border-primary-600 shadow-sm shadow-primary-500/30'
                   : 'bg-white/70 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300 border-gray-200/70 dark:border-white/10 hover:bg-white dark:hover:bg-gray-800'
               ]"
             >
-              {{ format }}
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" :d="format.icon" />
+              </svg>
+              {{ format.name }}
             </button>
         </div>
       </div>

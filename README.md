@@ -139,8 +139,8 @@
 
 | 客户端 | 格式支持 | 自动识别 | 内置转换 |
 |--------|---------|---------|---------|
-| Clash / Clash Meta / Stash | ✅ | ✅ | ✅ |
-| Sing-Box | ✅ | ✅ | ✅ |
+| Clash / Clash Meta / Stash / FlClash | ✅ | ✅ | ✅ |
+| Sing-Box / NekoBox | ✅ | ✅ | ✅ |
 | Surge / SurgeMac | ✅ | ✅ | ✅ |
 | Shadowrocket | ✅ | ✅ | ✅ |
 | V2rayN / V2rayNG | ✅ | ✅ | ✅ |
