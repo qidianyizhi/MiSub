@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS = {
     builtinLoonSkipCertVerify: false,
     useBuiltinConverter: true,
     builtinRuleTemplate: 'standard',
+    cacheMode: 'fast',
     NotifyThresholdDays: 3,
     NotifyThresholdPercent: 90,
     enableTrafficNode: false,

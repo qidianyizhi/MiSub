@@ -114,6 +114,23 @@ async function testSubconverter() {
       </div>
     </div>
 
+    <!-- 缓存模式 -->
+    <div class="p-4 bg-white/70 dark:bg-gray-900/50 border border-gray-200/70 dark:border-white/10 misub-radius-lg">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-900 dark:text-gray-200">缓存模式</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            快速响应：返回缓存 + 后台刷新（延迟一个更新周期） | 实时：每次同步获取最新数据
+          </p>
+        </div>
+        <select v-model="settings.cacheMode"
+          class="px-3 py-1.5 bg-white/80 dark:bg-gray-800/70 border border-gray-200/80 dark:border-white/10 misub-radius-lg text-sm text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary-500/40">
+          <option value="fast">快速响应（推荐）</option>
+          <option value="realtime">实时模式</option>
+        </select>
+      </div>
+    </div>
+
     <!-- 外部 SubConverter 配置（仅内置关闭时显示） -->
     <template v-if="!settings.useBuiltinConverter">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

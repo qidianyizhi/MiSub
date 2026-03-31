@@ -14,11 +14,17 @@ export async function resolveNodeListWithCache({
     forceRefresh,
     refreshNodes,
     context,
-    targetMisubsCount
+    targetMisubsCount,
+    cacheMode = 'fast'
 }) {
-    const { data: cachedData, status: cacheStatus } = forceRefresh
-        ? { data: null, status: 'miss' }
-        : await getCache(storageAdapter, cacheKey);
+    // 实时模式：跳过缓存，直接同步获取最新数据
+    if (cacheMode === 'realtime' || forceRefresh) {
+        const combinedNodeList = await refreshNodes(false);
+        const cacheHeaders = createCacheHeaders('MISS', combinedNodeList.split('\n').filter(l => l.trim()).length);
+        return { combinedNodeList, cacheHeaders, cacheStatus: 'miss' };
+    }
+
+    const { data: cachedData, status: cacheStatus } = await getCache(storageAdapter, cacheKey);
 
     let combinedNodeList;
     let cacheHeaders = {};

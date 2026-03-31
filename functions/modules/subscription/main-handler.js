@@ -339,7 +339,8 @@ export async function handleMisubRequest(context) {
         forceRefresh,
         refreshNodes,
         context,
-        targetMisubsCount: targetMisubs.length
+        targetMisubsCount: targetMisubs.length,
+        cacheMode: config.cacheMode || 'fast'
     });
 
     if (!env.workers) {
