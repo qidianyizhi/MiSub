@@ -7,6 +7,7 @@ import { parseNodeList } from '../modules/utils/node-parser.js';
 import { getProcessedUserAgent } from '../utils/format-utils.js';
 import { prependNodeName, removeFlagEmoji, fixNodeUrlEncoding, sanitizeNodeForYaml } from '../utils/node-utils.js';
 import { applyNodeTransformPipeline } from '../utils/node-transformer.js';
+import { runOperatorChain } from '../utils/operator-runner.js';
 import { createTimeoutFetch } from '../modules/utils.js';
 
 /**
@@ -91,6 +92,17 @@ async function fetchWithRetry(url, init = {}, options = {}) {
     }
 
     throw lastError;
+}
+
+/**
+ * 确保值为数组
+ * @param {*} val - 任意值
+ * @returns {Array} - 数组
+ */
+function ensureArray(val) {
+    if (Array.isArray(val)) return val;
+    if (val == null) return [];
+    return [val];
 }
 
 /**
@@ -297,9 +309,19 @@ return '';
     // [Sanitize] Always sanitize node names for YAML compatibility (Subconverter issue with unquoted special chars)
     const sanitizedLines = normalizedLines.map(line => sanitizeNodeForYaml(line));
 
-    const outputLines = nodeTransformConfig?.enabled
-        ? applyNodeTransformPipeline(sanitizedLines, { ...nodeTransformConfig, enableEmoji: templateContainsEmoji })
-        : [...new Set(sanitizedLines)];
+    // --- Operator Chain Integration ---
+    // Priority: profile operators > global default operators > legacy nodeTransform pipeline
+    let outputLines = [...new Set(sanitizedLines)];
+    const activeOperators = ensureArray(profilePrefixSettings?.operators);
+    if (activeOperators.length > 0) {
+        outputLines = await runOperatorChain(outputLines, activeOperators, {
+            userAgent,
+            subName: profilePrefixSettings?.name || 'MiSub'
+        });
+    } else if (nodeTransformConfig?.enabled) {
+        outputLines = applyNodeTransformPipeline(outputLines, { ...nodeTransformConfig, enableEmoji: templateContainsEmoji });
+    }
+
     const uniqueNodesString = outputLines.join('\n');
 
     // 确保最终的字符串在非空时以换行符结束，以兼容 subconverter
@@ -455,7 +477,7 @@ function applyManualNodeName(nodeUrl, customName) {
                 nodeConfig.ps = customName;
 
                 const newJsonString = JSON.stringify(nodeConfig);
-                const newBase64Part = btoa(unescape(encodeURIComponent(newJsonString)));
+                const newBase64Part = btoa(Array.from(new TextEncoder().encode(newJsonString), b => String.fromCharCode(b)).join(''));
                 return 'vmess://' + newBase64Part;
             }
         } catch (e) {

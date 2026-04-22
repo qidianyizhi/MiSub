@@ -310,9 +310,17 @@ export async function handleMisubRequest(context) {
             ? profileNodeTransform
             : globalNodeTransform;
 
+        // operators 回退逻辑
+        const globalOperators = config.defaultOperators || [];
+        const profileOperators = currentProfile?.operators ?? null;
+        const effectiveOperators = Array.isArray(profileOperators)
+            ? profileOperators
+            : globalOperators;
+
         const generationSettings = {
             ...effectivePrefixSettings,
             nodeTransform: effectiveNodeTransform,
+            operators: effectiveOperators,
             name: subName
         };
 
@@ -393,10 +401,10 @@ export async function handleMisubRequest(context) {
             }
         }
 
-        return new Response(btoa(unescape(encodeURIComponent(contentToEncode))), { headers });
+        return new Response(btoa(Array.from(new TextEncoder().encode(contentToEncode), b => String.fromCharCode(b)).join('')), { headers });
     }
 
-    const base64Content = btoa(unescape(encodeURIComponent(combinedNodeList)));
+    const base64Content = btoa(Array.from(new TextEncoder().encode(combinedNodeList), b => String.fromCharCode(b)).join(''));
 
     const callbackToken = await getCallbackToken(env);
     const callbackPath = profileIdentifier ? `/${token}/${profileIdentifier}` : `/${token}`;
@@ -994,7 +1002,7 @@ MATCH,DIRECT
             });
         }
 
-        const fallbackContent = btoa(unescape(encodeURIComponent(combinedNodeList)));
+        const fallbackContent = btoa(Array.from(new TextEncoder().encode(combinedNodeList), b => String.fromCharCode(b)).join(''));
         return new Response(fallbackContent, { headers: fallbackHeaders, status: 200 });
     }
 

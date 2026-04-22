@@ -3,7 +3,8 @@
  * 支持：正则重命名、模板重命名、智能去重、排序
  */
 
-import { extractNodeRegion, getRegionEmoji, REGION_KEYWORDS, REGION_EMOJI } from '../modules/utils/geo-utils.js';
+import { extractNodeRegion, getRegionEmoji, REGION_KEYWORDS, REGION_EMOJI, parseNodeInfo } from '../modules/utils/geo-utils.js';
+import { extractNodeMetadata } from '../modules/utils/metadata-extractor.js';
 
 // ============ 默认配置 ============
 
@@ -367,6 +368,72 @@ function applyRegexRename(name, rules) {
         }
     }
     return result.trim();
+}
+
+export function matchesRegexRules(name, rules) {
+    const value = String(name || '');
+    for (const rule of rules) {
+        if (!rule) continue;
+        const pattern = typeof rule === 'string' ? rule : rule.pattern;
+        const flags = typeof rule === 'string' ? 'i' : (rule.flags || 'i');
+        if (!pattern) continue;
+        try {
+            const re = new RegExp(pattern, flags);
+            if (re.test(value)) return true;
+        } catch (error) {
+            warnInvalidRegex(typeof rule === 'string' ? { pattern: rule } : rule, error);
+        }
+    }
+    return false;
+}
+
+export function ensureRegionInfo(record, enableEmoji = false) {
+    if (record.regionZh) return record;
+    let regionZh = record.metadata?.regionZh || extractNodeRegion(record.name);
+    let regionCode = record.metadata?.region || '';
+    if (regionZh === '其他' && record.server) {
+        regionZh = extractNodeRegion(record.server);
+    }
+    if (!regionCode) {
+        regionCode = toRegionCode(regionZh);
+    }
+    const emoji = enableEmoji ? (record.metadata?.flag || getRegionEmoji(regionZh)) : '';
+    return { ...record, region: regionCode, regionZh, emoji };
+}
+
+export function nodeUrlsToRecords(nodeUrls, options = {}) {
+    const input = Array.isArray(nodeUrls)
+        ? nodeUrls.map(s => String(s || '').trim()).filter(Boolean)
+        : [];
+
+    return input.map(url => {
+        const nodeInfo = parseNodeInfo(url);
+        const metadata = extractNodeMetadata(nodeInfo.name);
+
+        const record = {
+            url,
+            protocol: nodeInfo.protocol,
+            name: nodeInfo.name,
+            originalName: nodeInfo.name,
+            region: '',
+            emoji: '',
+            server: nodeInfo.server || '',
+            port: nodeInfo.port || '',
+            metadata
+        };
+
+        return options.ensureRegion ? ensureRegionInfo(record, options.enableEmoji) : record;
+    });
+}
+
+export function recordsToNodeUrls(records) {
+    if (!Array.isArray(records)) return [];
+    return records.map(r => {
+        if (r.name && r.name !== r.originalName) {
+            return setNodeName(r.url, r.protocol, r.name);
+        }
+        return r.url;
+    });
 }
 
 function makeDedupKey(record, cfg) {

@@ -224,6 +224,7 @@ profileCopy.prefixSettings.prependGroupName ?? null;
       delete profileCopy.prefixSettings.enableNodeEmoji;
     }
     profileCopy.nodeTransform = profileCopy.nodeTransform ?? null;
+    profileCopy.operators = Array.isArray(profileCopy.operators) ? profileCopy.operators : [];
     localProfile.value = profileCopy;
   } else {
 localProfile.value = {
@@ -241,7 +242,8 @@ enableSubscriptions: null,
 manualNodePrefix: '',
 prependGroupName: null
 },
-nodeTransform: null
+nodeTransform: null,
+operators: []
 };
   }
 }, { deep: true, immediate: true });

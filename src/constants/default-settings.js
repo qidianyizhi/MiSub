@@ -57,6 +57,7 @@ prependGroupName: false
             ]
         }
     },
+    defaultOperators: [],
     // 公告设置
     announcement: {
         enabled: false,           // 是否启用公告

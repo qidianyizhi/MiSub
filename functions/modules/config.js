@@ -67,6 +67,7 @@ export const DEFAULT_SETTINGS = {
             ]
         }
     },
+    defaultOperators: [],
     // 公告设置
     announcement: {
         enabled: false,
