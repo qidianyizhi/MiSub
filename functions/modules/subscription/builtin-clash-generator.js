@@ -8,6 +8,7 @@ import { urlsToClashProxies } from '../../utils/url-to-clash.js';
 import { getUniqueName } from './name-utils.js';
 import { clashFix } from '../../utils/format-utils.js';
 import { getTemplate, renderRulesForClash, getExtraGroups } from './rule-templates.js';
+import { pruneProxyGroups } from './group-pruner.js';
 import yaml from 'js-yaml';
 
 /**
@@ -165,7 +166,8 @@ export function generateBuiltinClashConfig(nodeList, options = {}) {
                     : ['🚀 节点选择', '♻️ 自动选择', 'DIRECT', ...proxyNames];
                 groups.push({ 'name': g.name, 'type': 'select', 'proxies': defaultProxies });
             }
-            return groups;
+            // 修剪无效引用、防止自引用和回环
+            return pruneProxyGroups(groups, proxies);
         })(),
 
         ...(() => {

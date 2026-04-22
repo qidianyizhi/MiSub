@@ -13,6 +13,7 @@
 import { urlToClashProxy } from '../../utils/url-to-clash.js';
 import { getUniqueName } from './name-utils.js';
 import { getTemplate, renderRulesForSurge, getExtraGroups } from './rule-templates.js';
+import { groupNodeLinesByRegion } from './region-groups.js';
 
 /**
  * 清理控制字符
@@ -38,11 +39,14 @@ function sanitizeNodeName(name) {
  * 参数值加引号（如果包含特殊字符）
  */
 function loonQuote(value) {
-    if (!value) return '';
-    if (/[,\s"=]/.test(value)) {
-        return `"${value.replace(/"/g, '\\"')}"`;
+    if (value === undefined || value === null) return '';
+    const strValue = String(value);
+    // 如果包含逗号、空格、等号、引号，则需要加双引号并转义内部引号
+    // Loon 原生 INI 格式中，如果值包含等号或逗号，必须加引号
+    if (/[,\s"=]/.test(strValue)) {
+        return `"${strValue.replace(/"/g, '\\"')}"`;
     }
-    return value;
+    return strValue;
 }
 
 /**
@@ -85,49 +89,56 @@ function clashProxyToLoonResult(proxy) {
         
         if (proxy.udp) parts.push('udp-relay=true');
         if (proxy.obfs) {
-            parts.push(`obfs=${proxy.obfs}`);
-            if (proxy['obfs-host']) parts.push(`obfs-host=${proxy['obfs-host']}`);
+            parts.push(`obfs-name=${proxy.obfs}`);
+            if (proxy['obfs-host']) parts.push(`obfs-host=${loonQuote(proxy['obfs-host'])}`);
+            if (proxy['obfs-uri']) parts.push(`obfs-uri=${loonQuote(proxy['obfs-uri'])}`);
         }
     } else if (type === 'vmess') {
         parts.push(`${name} = vmess`);
         parts.push(server);
         parts.push(String(port));
         parts.push(proxy.uuid || '');
-        
+
+        // 官方文档 VMess WS 示例中包含了 alterId=0
+        parts.push('alterId=0');
+
         if (proxy.tls) parts.push('tls=true');
         if (proxy.network === 'ws') {
             parts.push('transport=ws');
             const wsOpts = proxy['ws-opts'] || proxy.wsOpts;
-            if (wsOpts?.path) parts.push(`path=${wsOpts.path}`);
-            if (wsOpts?.headers?.Host) parts.push(`host=${wsOpts.headers.Host}`);
+            if (wsOpts?.path) parts.push(`path=${loonQuote(wsOpts.path)}`);
+            if (wsOpts?.headers?.Host) parts.push(`host=${loonQuote(wsOpts.headers.Host)}`);
         }
         appendTlsParams(parts, proxy);
     } else if (type === 'vless') {
         parts.push(`${name} = vless`);
         parts.push(server);
         parts.push(String(port));
-        parts.push(proxy.uuid || '');
+        parts.push(`"${proxy.uuid || ''}"`);
 
         if (proxy.flow) {
-            parts.push(`flow=${proxy.flow}`);
+            parts.push(`flow=${loonQuote(proxy.flow)}`);
         }
 
         if (proxy.network) {
             parts.push(`transport=${proxy.network}`);
-            
+
             if (proxy.network === 'ws') {
                 const wsOpts = proxy['ws-opts'] || proxy.wsOpts;
-                if (wsOpts?.path) parts.push(`path=${wsOpts.path}`);
-                if (wsOpts?.headers?.Host) parts.push(`host=${wsOpts.headers.Host}`);
+                if (wsOpts?.path) parts.push(`path=${loonQuote(wsOpts.path)}`);
+                if (wsOpts?.headers?.Host) parts.push(`host=${loonQuote(wsOpts.headers.Host)}`);
             } else if (proxy.network === 'grpc') {
                 const grpcOpts = proxy['grpc-opts'] || proxy.grpcOpts;
-                if (grpcOpts?.['grpc-service-name']) parts.push(`grpc-service-name=${grpcOpts['grpc-service-name']}`);
+                if (grpcOpts?.['grpc-service-name']) parts.push(`grpc-service-name=${loonQuote(grpcOpts['grpc-service-name'])}`);
             } else if (proxy.network === 'xhttp') {
                 const xhttpOpts = proxy['xhttp-opts'] || proxy.xhttpOpts;
-                if (xhttpOpts?.path) parts.push(`path=${xhttpOpts.path}`);
-                if (xhttpOpts?.host) parts.push(`host=${xhttpOpts.host}`);
-                if (xhttpOpts?.mode) parts.push(`mode=${xhttpOpts.mode}`);
+                if (xhttpOpts?.path) parts.push(`path=${loonQuote(xhttpOpts.path)}`);
+                if (xhttpOpts?.host) parts.push(`host=${loonQuote(xhttpOpts.host)}`);
+                if (xhttpOpts?.mode) parts.push(`mode=${loonQuote(xhttpOpts.mode)}`);
             }
+        } else {
+            // VLESS 官方文档中常用 transport=tcp
+            parts.push('transport=tcp');
         }
 
         if (proxy.tls || proxy.security === 'reality') {
@@ -135,8 +146,8 @@ function clashProxyToLoonResult(proxy) {
             const realityOpts = proxy['reality-opts'] || proxy.realityOpts;
             if (realityOpts) {
                 parts.push('reality=true');
-                if (realityOpts['public-key']) parts.push(`public-key=${realityOpts['public-key']}`);
-                if (realityOpts['short-id']) parts.push(`short-id=${realityOpts['short-id']}`);
+                if (realityOpts['public-key']) parts.push(`public-key=${loonQuote(realityOpts['public-key'])}`);
+                if (realityOpts['short-id']) parts.push(`short-id=${loonQuote(realityOpts['short-id'])}`);
             }
         }
         appendTlsParams(parts, proxy);
@@ -149,8 +160,8 @@ function clashProxyToLoonResult(proxy) {
         if (proxy.network === 'ws') {
             parts.push('transport=ws');
             const wsOpts = proxy['ws-opts'] || proxy.wsOpts;
-            if (wsOpts?.path) parts.push(`path=${wsOpts.path}`);
-            if (wsOpts?.headers?.Host) parts.push(`host=${wsOpts.headers.Host}`);
+            if (wsOpts?.path) parts.push(`path=${loonQuote(wsOpts.path)}`);
+            if (wsOpts?.headers?.Host) parts.push(`host=${loonQuote(wsOpts.headers.Host)}`);
         }
         appendTlsParams(parts, proxy);
     } else if (type === 'hysteria2' || type === 'hy2') {
@@ -163,6 +174,8 @@ function clashProxyToLoonResult(proxy) {
         parts.push(`${name} = tuic`);
         parts.push(server);
         parts.push(String(port));
+        parts.push(loonQuote(proxy.token || proxy.uuid || ''));
+        if (proxy.password) parts.push(`password=${loonQuote(proxy.password)}`);
         parts.push(proxy.token || proxy.uuid || '');
         if (proxy.password) parts.push(`password=${proxy.password}`);
         appendTlsParams(parts, proxy);
@@ -185,7 +198,7 @@ function clashProxyToLoonResult(proxy) {
         parts.push(`${name} = snell`);
         parts.push(server);
         parts.push(String(port));
-        parts.push(proxy.psk || proxy.password || '');
+        if (proxy.psk || proxy.password) parts.push(`psk=${loonQuote(proxy.psk || proxy.password)}`);
         if (proxy.version) parts.push(`version=${proxy.version}`);
         // 连接复用（Snell V3+ 支持）
         if (proxy.reuse !== undefined) parts.push(`reuse=${proxy.reuse}`);
@@ -194,8 +207,8 @@ function clashProxyToLoonResult(proxy) {
         // 混淆参数
         const obfsOpts = proxy['obfs-opts'];
         if (obfsOpts) {
-            if (obfsOpts.mode && obfsOpts.mode !== 'none') parts.push(`obfs=${obfsOpts.mode}`);
-            if (obfsOpts.host) parts.push(`obfs-host=${obfsOpts.host}`);
+            if (obfsOpts.mode && obfsOpts.mode !== 'none') parts.push(`obfs=${loonQuote(obfsOpts.mode)}`);
+            if (obfsOpts.host) parts.push(`obfs-host=${loonQuote(obfsOpts.host)}`);
         }
     } else {
         return null;
@@ -212,17 +225,17 @@ function clashProxyToLoonResult(proxy) {
 
 function appendTlsParams(parts, proxy) {
     if (proxy.sni || proxy.servername) {
-        parts.push(`sni=${proxy.sni || proxy.servername}`);
+        parts.push(`sni=${loonQuote(proxy.sni || proxy.servername)}`);
     }
     if (proxy['skip-cert-verify'] === true || proxy.skipCertVerify === true) {
         parts.push('skip-cert-verify=true');
     }
     if (proxy.alpn) {
         const alpnStr = Array.isArray(proxy.alpn) ? proxy.alpn[0] : proxy.alpn;
-        parts.push(`alpn=${alpnStr}`);
+        parts.push(`alpn=${loonQuote(alpnStr)}`);
     }
     if (proxy['client-fingerprint']) {
-        parts.push(`client-fingerprint=${proxy['client-fingerprint']}`);
+        parts.push(`client-fingerprint=${loonQuote(proxy['client-fingerprint'])}`);
     }
 }
 
@@ -248,18 +261,6 @@ export function generateBuiltinLoonConfig(nodeList, options = {}) {
     const proxyNames = [];
     const usedNames = new Map();
 
-    // 分区域容器
-    const regionGroups = {
-        '🇭🇰 香港节点': /港|HK|Hong Kong/i,
-        '🇹🇼 台湾节点': /台|TW|Taiwan/i,
-        '🇯🇵 日本节点': /日|JP|Japan/i,
-        '🇸🇬 狮城节点': /狮城|新|SG|Singapore/i,
-        '🇺🇸 美国节点': /美|US|America/i,
-        '🇰🇷 韩国节点': /韩|KR|Korea/i,
-        '🇬🇧 英国节点': /英|UK|England/i,
-    };
-    const activeRegionGroups = {};
-
     for (const url of nodeUrls) {
         const clashProxy = urlToClashProxy(url);
         if (!clashProxy) continue;
@@ -276,17 +277,15 @@ export function generateBuiltinLoonConfig(nodeList, options = {}) {
         if (line) {
             proxyLines.push(line);
             proxyNames.push(uniqueName);
-
-            // 归类
-            for (const [groupName, regex] of Object.entries(regionGroups)) {
-                if (regex.test(uniqueName)) {
-                    if (!activeRegionGroups[groupName]) {
-                        activeRegionGroups[groupName] = [];
-                    }
-                    activeRegionGroups[groupName].push(uniqueName);
-                }
-            }
         }
+    }
+
+    // 使用统一的 region-groups 模块进行地区识别（支持 17 个地区）
+    const regionNodes = proxyNames.map(name => ({ tag: name }));
+    const activeRegions = groupNodeLinesByRegion(regionNodes);
+    const activeRegionMap = {};
+    for (const region of activeRegions) {
+        activeRegionMap[region.name] = region.tags;
     }
 
     if (proxyLines.length === 0) {
@@ -313,17 +312,17 @@ resource-parser = https://raw.githubusercontent.com/sub-store-org/Sub-Store/mast
 
     // [Proxy Group]
     const proxyNamesStr = proxyNames.join(', ');
-    const activeRegionNames = Object.keys(activeRegionGroups);
+    const activeRegionNames = Object.keys(activeRegionMap);
     const regionGroupRefs = activeRegionNames.length > 0 ? `, ${activeRegionNames.join(', ')}` : '';
-    
+
     const iconRepo = 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color';
     const proxyGroupLines = [];
-    
+
     // 主分组
     proxyGroupLines.push(`📶 节点选择 = select, ♻️ 自动选择${regionGroupRefs}, ${proxyNamesStr}, DIRECT, icon=${iconRepo}/Proxy.png`);
     proxyGroupLines.push(`♻️ 自动选择 = url-test, ${proxyNamesStr}, url=http://www.gstatic.com/generate_204, interval=300, tolerance=50, icon=${iconRepo}/Speedtest.png`);
 
-    // 区域分组
+    // 区域分组（使用 region-groups 的地区名匹配图标）
     const regionIcons = {
         '🇭🇰 香港节点': `${iconRepo}/Hong_Kong.png`,
         '🇹🇼 台湾节点': `${iconRepo}/Taiwan.png`,
@@ -332,10 +331,19 @@ resource-parser = https://raw.githubusercontent.com/sub-store-org/Sub-Store/mast
         '🇺🇸 美国节点': `${iconRepo}/United_States.png`,
         '🇰🇷 韩国节点': `${iconRepo}/South_Korea.png`,
         '🇬🇧 英国节点': `${iconRepo}/United_Kingdom.png`,
+        '🇩🇪 德国节点': `${iconRepo}/Germany.png`,
+        '🇫🇷 法国节点': `${iconRepo}/France.png`,
+        '🇦🇺 澳洲节点': `${iconRepo}/Australia.png`,
+        '🇷🇺 俄国节点': `${iconRepo}/Russia.png`,
+        '🇮🇳 印度节点': `${iconRepo}/India.png`,
+        '🇨🇦 加拿大节点': `${iconRepo}/Canada.png`,
+        '🇧🇷 巴西节点': `${iconRepo}/Brazil.png`,
+        '🇪🇸 西班牙节点': `${iconRepo}/Spain.png`,
+        '🇳🇱 荷兰节点': `${iconRepo}/Netherlands.png`,
     };
 
     for (const groupName of activeRegionNames) {
-        const nodesInGroup = activeRegionGroups[groupName].join(', ');
+        const nodesInGroup = activeRegionMap[groupName].join(', ');
         const icon = regionIcons[groupName] ? `, icon=${regionIcons[groupName]}` : '';
         proxyGroupLines.push(`${groupName} = url-test, ${nodesInGroup}, url=http://www.gstatic.com/generate_204, interval=300, tolerance=50${icon}`);
     }

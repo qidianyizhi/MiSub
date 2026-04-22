@@ -10,6 +10,8 @@
 import { urlToClashProxy } from '../../utils/url-to-clash.js';
 import { getUniqueName } from './name-utils.js';
 import { getTemplate, renderRulesForSurge, getExtraGroups } from './rule-templates.js';
+import { groupNodeLinesByRegion } from './region-groups.js';
+import { pruneProxyGroups } from './group-pruner.js';
 
 /**
  * 清理字符串中的控制字符（保留换行和制表符）
@@ -456,33 +458,17 @@ DIRECT = direct
 ${finalProxyLines.join('\n')}`);
 
     // --- 高级分组逻辑 (按地区分类) ---
-    const regionGroups = {
-        '🇭🇰 香港节点': /港|HK|Hong Kong/i,
-        '🇹🇼 台湾节点': /台|TW|Taiwan/i,
-        '🇯🇵 日本节点': /日|JP|Japan/i,
-        '🇸🇬 狮城节点': /狮城|新|SG|Singapore/i,
-        '🇺🇸 美国节点': /美|US|America/i,
-        '🇰🇷 韩国节点': /韩|KR|Korea/i,
-        '🇬🇧 英国节点': /英|UK|England/i,
-    };
-
-    const activeRegionGroups = {};
-
-    // 遍历最终的节点名称列表，将节点归类到相应的地区
-    for (const proxyName of finalProxyNames) {
-        for (const [groupName, regex] of Object.entries(regionGroups)) {
-            if (regex.test(proxyName)) {
-                if (!activeRegionGroups[groupName]) {
-                    activeRegionGroups[groupName] = [];
-                }
-                activeRegionGroups[groupName].push(proxyName);
-            }
-        }
+    // 使用统一的 region-groups 模块进行地区识别（支持 17 个地区）
+    const regionNodes = finalProxyNames.map(name => ({ tag: name }));
+    const activeRegions = groupNodeLinesByRegion(regionNodes);
+    const activeRegionMap = {};
+    for (const region of activeRegions) {
+        activeRegionMap[region.name] = region.tags;
     }
 
     // [Proxy Group]
     const proxyNamesList = finalProxyNames.join(', ');
-    const activeRegionGroupNames = Object.keys(activeRegionGroups);
+    const activeRegionGroupNames = Object.keys(activeRegionMap);
     const regionGroupRefs = activeRegionGroupNames.length > 0 ? `, ${activeRegionGroupNames.join(', ')}` : '';
 
     const proxyGroupLines = [];
@@ -492,7 +478,7 @@ ${finalProxyLines.join('\n')}`);
 
     // 添加各个有效地区的分组
     for (const groupName of activeRegionGroupNames) {
-        const nodesInGroup = activeRegionGroups[groupName].join(', ');
+        const nodesInGroup = activeRegionMap[groupName].join(', ');
         proxyGroupLines.push(`${groupName} = url-test, ${nodesInGroup}, url=http://www.gstatic.com/generate_204, interval=300, tolerance=50`);
     }
 
