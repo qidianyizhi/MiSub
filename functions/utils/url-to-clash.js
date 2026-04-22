@@ -120,9 +120,12 @@ function parseVlessUrl(url) {
         if (network === 'xhttp') {
             const xhttpOpts = {};
             const path = params.get('xhttp-path') || params.get('path');
-            const host = params.get('xhttp-host') || params.get('host');
+            const host = params.get('xhttp-host') || params.get('host') || params.get('sni');
             if (path) xhttpOpts.path = path;
-            if (host) xhttpOpts.host = host;
+            if (host) {
+                xhttpOpts.host = host;
+                xhttpOpts.headers = { Host: host };
+            }
             if (params.get('mode')) xhttpOpts.mode = params.get('mode');
             if (Object.keys(xhttpOpts).length > 0) {
                 proxy['xhttp-opts'] = xhttpOpts;
@@ -196,9 +199,6 @@ function parseVlessUrl(url) {
             proxy['dialer-proxy'] = params.get('dp');
         }
 
-        // UDP
-        proxy.udp = true;
-
         return proxy;
     } catch (e) {
         console.error('解析 VLESS URL 失败:', e);
@@ -265,8 +265,10 @@ function parseTrojanUrl(url) {
 
         // SNI / servername (mihomo 使用 servername)
         if (params.get('sni')) {
+            proxy.servername = params.get('sni');
             proxy.sni = params.get('sni');
         } else if (params.get('peer')) {
+            proxy.servername = params.get('peer');
             proxy.sni = params.get('peer');
         }
 
@@ -287,9 +289,6 @@ function parseTrojanUrl(url) {
         if (params.get('dp')) {
             proxy['dialer-proxy'] = params.get('dp');
         }
-
-        // UDP
-        proxy.udp = true;
 
         return proxy;
     } catch (e) {
@@ -357,7 +356,7 @@ function parseVmessUrl(url) {
         }
 
         // UDP
-        proxy.udp = true;
+        // proxy.udp = true;
 
         return proxy;
     } catch (e) {
@@ -454,7 +453,7 @@ function parseSsUrl(url) {
         };
 
         // UDP
-        proxy.udp = true;
+        // proxy.udp = true;
 
         return proxy;
     } catch (e) {
@@ -507,6 +506,7 @@ function parseHysteria2Url(url) {
 
         // SNI
         if (params.get('sni')) {
+            proxy.servername = params.get('sni');
             proxy.sni = params.get('sni');
         }
 
@@ -577,6 +577,7 @@ function parseTuicUrl(url) {
 
         // SNI
         if (params.get('sni')) {
+            proxy.servername = params.get('sni');
             proxy.sni = params.get('sni');
         }
 
@@ -798,8 +799,11 @@ function parseAnytlsUrl(url) {
         const name = extractName(url);
 
         const proxy = { name: name || `AnyTLS-${server}`, type: 'anytls', server, port, password };
-        
-        if (params.get('sni')) proxy.sni = params.get('sni');
+
+        if (params.get('sni')) {
+            proxy.servername = params.get('sni');
+            proxy.sni = params.get('sni');
+        }
         if (params.get('alpn')) proxy.alpn = params.get('alpn').split(',');
         if (params.get('insecure') === '1') proxy['skip-cert-verify'] = true;
 

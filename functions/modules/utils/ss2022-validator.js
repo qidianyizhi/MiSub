@@ -174,7 +174,7 @@ export function fixSS2022Node(nodeUrl) {
 
         // 构建新的配置
         const newConfig = `${validation.details.suggestedCipher}:${password}`;
-        const newBase64 = btoa(unescape(encodeURIComponent(newConfig)));
+        const newBase64 = btoa(Array.from(new TextEncoder().encode(newConfig), b => String.fromCharCode(b)).join(''));
         const fixedUrl = `ss://${newBase64}${serverPart}`;
 
         return {

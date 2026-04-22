@@ -1224,7 +1224,7 @@ async function handleExportCommand(chatId, userId, args, env) {
             default:
                 // Base64 格式
                 const urls = userNodes.map(n => n.url).join('\n');
-                content = btoa(unescape(encodeURIComponent(urls)));
+                content = btoa(Array.from(new TextEncoder().encode(urls), b => String.fromCharCode(b)).join(''));
                 formatName = 'Base64';
                 break;
         }

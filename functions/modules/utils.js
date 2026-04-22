@@ -359,7 +359,7 @@ export function prependNodeName(link, prefix) {
                 nodeConfig.ps = originalPs ? `${prefix} - ${originalPs}` : prefix;
             }
             const newJsonString = JSON.stringify(nodeConfig);
-            const newBase64Part = btoa(unescape(encodeURIComponent(newJsonString)));
+            const newBase64Part = btoa(Array.from(new TextEncoder().encode(newJsonString), b => String.fromCharCode(b)).join(''));
             return 'vmess://' + newBase64Part;
         } catch (e) {
             console.error("为 vmess 节点添加名称前缀失败，将回退到通用方法。", e);
