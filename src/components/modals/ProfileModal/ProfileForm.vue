@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import SubConverterSelector from '../../forms/SubConverterSelector.vue';
 import NodeTransformSettings from '../../settings/NodeTransformSettings.vue';
+import OperatorChain from '../../features/Operators/OperatorChain.vue';
 import Input from '../../ui/Input.vue';
 import { useSettingsStore } from '@/stores/settings';
 
@@ -163,6 +164,7 @@ const nodeTransformMode = computed({
             <option value="basic">基础 — 仅 GEOIP 分流</option>
             <option value="standard">标准 — Apple / 媒体 / Telegram / 国内</option>
             <option value="full">完整 — YouTube / Netflix / 微软 / 游戏等细分</option>
+            <option value="full_ai">AI 开发者 — OpenAI / Claude / Copilot / YouTube 分流</option>
           </select>
           <p class="text-xs text-gray-400 mt-1">为此订阅组指定独立的分流规则模板，留空则使用全局设置。</p>
         </div>
@@ -249,6 +251,16 @@ class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300
           v-if="nodeTransformMode === 'custom'"
           :model-value="localProfile.nodeTransform"
           @update:model-value="val => localProfile.nodeTransform = val"
+        />
+      </div>
+
+      <!-- Operator Chain Settings -->
+      <div class="bg-gray-50 dark:bg-gray-800/50 misub-radius-md p-3 border border-gray-100 dark:border-gray-700">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">算子链 (Operator Chain)</label>
+        <p class="text-xs text-gray-400 mb-3">通过链式操作符对节点进行过滤、重命名、排序、去重和脚本处理。配置后将优先于上方“节点净化管道”生效。</p>
+        <OperatorChain
+          v-model="localProfile.operators"
+          :legacy-data="localProfile.nodeTransform"
         />
       </div>
     </div>

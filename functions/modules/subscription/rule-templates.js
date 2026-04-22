@@ -77,6 +77,27 @@ const RULE_SET_URLS = {
         quanx: 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Game/Game.list',
         singbox: 'geosite:category-games',
     },
+    AI: {
+        surge: 'https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Surge/OpenAI/OpenAI.list',
+        clash: 'https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OpenAI/OpenAI.yaml',
+        loon: 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Loon/OpenAI/OpenAI.list',
+        quanx: 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/OpenAI/OpenAI.list',
+        singbox: 'geosite:openai',
+    },
+    Claude: {
+        surge: 'https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Claude/Claude.list',
+        clash: 'https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Claude/Claude.yaml',
+        loon: 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Loon/Claude/Claude.list',
+        quanx: 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Claude/Claude.list',
+        singbox: 'geosite:claude',
+    },
+    Copilot: {
+        surge: 'https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Copilot/Copilot.list',
+        clash: 'https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Copilot/Copilot.yaml',
+        loon: 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Loon/Copilot/Copilot.list',
+        quanx: 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Copilot/Copilot.list',
+        singbox: 'geosite:copilot',
+    },
 };
 
 export function getRuleSetUrl(category, format) {
@@ -135,10 +156,38 @@ export const RULE_TEMPLATES = {
             { type: 'GEOIP', payload: 'CN', policy: 'DIRECT' },
             { type: 'FINAL', policy: '📶 节点选择' }
         ]
+    },
+    full_ai: {
+        name: 'AI 开发者',
+        description: 'OpenAI / Claude / Copilot / YouTube / 流媒体细分',
+        extraGroups: [
+            { name: '🤖 OpenAI', type: 'select', defaultPolicy: '📶 节点选择' },
+            { name: '🧠 Claude', type: 'select', defaultPolicy: '📶 节点选择' },
+            { name: '💻 Copilot', type: 'select', defaultPolicy: '📶 节点选择' },
+            { name: '🎬 YouTube', type: 'select', defaultPolicy: '📶 节点选择' },
+            { name: '📲 Telegram', type: 'select', defaultPolicy: '📶 节点选择' },
+            { name: '🪟 Microsoft', type: 'select', defaultPolicy: '📶 节点选择' },
+        ],
+        rules: [
+            { type: 'RULE-SET', category: 'AI', policy: '🤖 OpenAI', comment: 'OpenAI' },
+            { type: 'RULE-SET', category: 'Claude', policy: '🧠 Claude', comment: 'Claude' },
+            { type: 'RULE-SET', category: 'Copilot', policy: '💻 Copilot', comment: 'GitHub Copilot' },
+            { type: 'RULE-SET', category: 'YouTube', policy: '🎬 YouTube', comment: 'YouTube' },
+            { type: 'RULE-SET', category: 'Netflix', policy: '📶 节点选择', comment: 'Netflix' },
+            { type: 'RULE-SET', category: 'Telegram', policy: '📲 Telegram', comment: 'Telegram' },
+            { type: 'RULE-SET', category: 'Microsoft', policy: '🪟 Microsoft', comment: 'Microsoft' },
+            { type: 'RULE-SET', category: 'GlobalMedia', policy: '📶 节点选择', comment: '全球媒体' },
+            { type: 'RULE-SET', category: 'China', policy: 'DIRECT', comment: '国内直连' },
+            { type: 'GEOIP', payload: 'CN', policy: 'DIRECT' },
+            { type: 'FINAL', policy: '📶 节点选择' }
+        ]
     }
 };
 
 export function getTemplate(templateId) {
+    if (typeof templateId === 'string' && templateId.startsWith('builtin:')) {
+        templateId = templateId.slice('builtin:'.length);
+    }
     return RULE_TEMPLATES[templateId] || RULE_TEMPLATES.basic;
 }
 

@@ -90,6 +90,7 @@ async function testSubconverter() {
           <option value="basic">基础 — 仅 GEOIP 分流</option>
           <option value="standard">标准 — Apple / 媒体 / Telegram / 国内（推荐）</option>
           <option value="full">完整 — YouTube / Netflix / Telegram / 微软 / 游戏等细分</option>
+          <option value="full_ai">AI 开发者 — OpenAI / Claude / Copilot / YouTube 分流</option>
         </select>
       </div>
     </div>
