@@ -1,5 +1,7 @@
 # MiSub
 
+> **Forked from [imzyb/MiSub](https://github.com/imzyb/MiSub)** · 本文档为个人定制版，在原项目基础上进行了功能增强与定制。
+
 <div align="center">
 
 **一个功能强大、界面精美的订阅管理与转换工具**
